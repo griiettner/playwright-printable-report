@@ -26,7 +26,7 @@ export function createBdd<T extends TestType<any, any>>(test: T) {
     (prefix: string) =>
       <R = unknown>(title: string, body: Body<R>) => {
         const pfx = prefix === 'Scenario' ? `${prefix}:` : prefix;
-        safeStep<R>(`${pfx} ${title}`, body);
+        return safeStep<R>(`${pfx} ${title}`, body);
     }
 
   function Feature(title: string, tags: string[] = [], fn: (fx: FxOf<T>, info: TestInfo) => Promise<void> | void) {

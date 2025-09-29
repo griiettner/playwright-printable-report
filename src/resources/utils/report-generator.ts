@@ -211,10 +211,81 @@ class BddReporter implements Reporter {
     if (step.steps && step.steps.length > 0) {
       subSteps = `<div class="step">${step.steps.map(this.renderStep.bind(this)).join('')}</div>`;
     }
+
+    const title = this.formatStepTitle(step);
+
     return `
-        <p>${step.title} <span class="${step.error ? 'failed' : 'passed'}">${step.error ? 'FAILED' : 'PASSED'}</span> (${step.duration}ms)</p>
+        <p>${title} <span class="${step.error ? 'failed' : 'passed'}">${step.error ? 'FAILED' : 'PASSED'}</span> (${step.duration}ms)</p>
         ${subSteps}
     `;
+  }
+
+  private formatStepTitle(step: ReportStep): string {
+    const rawTitle = (step.title || '').trim();
+    if (!rawTitle) return 'Step';
+
+    const expectMatch = rawTitle.match(/^Expect\s+"?(.+?)"?$/i);
+    if (expectMatch) {
+      return this.describeExpectation(expectMatch[1], step);
+    }
+
+    return rawTitle;
+  }
+
+  private describeExpectation(expectation: string, step: ReportStep): string {
+    const normalized = expectation.replace(/\s+/g, ' ').trim();
+    const lower = normalized.toLowerCase();
+
+    const mappings: Array<{ match: RegExp; message: string }> = [
+      { match: /poll to ?match/, message: 'Verify value eventually matches the expected text' },
+      { match: /tohavetext/, message: 'Verify element text matches the expected value' },
+      { match: /tocontaintext/, message: 'Verify element text contains the expected value' },
+      { match: /tobevisible/, message: 'Verify element is visible' },
+      { match: /tobeenabled/, message: 'Verify element is enabled' },
+      { match: /tobedisabled/, message: 'Verify element is disabled' },
+      { match: /toequal/, message: 'Verify values are equal' },
+      { match: /tocontain/, message: 'Verify collection contains the expected item' },
+      { match: /tobe(truthy|true)/, message: 'Verify value is true' },
+      { match: /tobe(falsy|false)/, message: 'Verify value is false' },
+      { match: /tobedefined/, message: 'Verify value is defined' },
+      { match: /tobenull/, message: 'Verify value is null' },
+      { match: /tohavecount/, message: 'Verify element count matches the expected value' },
+      { match: /tohaveselected/, message: 'Verify the option is selected' },
+      { match: /tohavevalue/, message: 'Verify element value matches the expected value' },
+    ];
+
+    const found = mappings.find(({ match }) => match.test(lower));
+    if (found) {
+      return `${found.message}${this.buildExpectationDetail(step)}`.trim();
+    }
+
+    const humanized = normalized
+      .replace(/["']/g, '')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .toLowerCase();
+
+    return `Verify expectation (${humanized})${this.buildExpectationDetail(step)}`.trim();
+  }
+
+  private buildExpectationDetail(step: ReportStep): string {
+    const message = this.extractExpectationMessage(step);
+    return message ? ` - ${message}` : '';
+  }
+
+  private extractExpectationMessage(step: ReportStep): string | null {
+    const rawMessage = typeof step.error?.message === 'string' ? step.error.message : '';
+    if (!rawMessage) return null;
+
+    const cleanMessage = rawMessage.replace(/\u001b\[[0-9;]*m/g, '').trim();
+
+    const expectedActual = cleanMessage.match(/Expected:?\s*([^\n]+)\n[\s\S]*?(Received|Actual):?\s*([^\n]+)/i);
+    if (expectedActual) {
+      const [, expected, , actual] = expectedActual;
+      return `expected ${expected.trim()} but received ${actual.trim()}`;
+    }
+
+    const singleLine = cleanMessage.split('\n').find((line) => line.trim().length > 0);
+    return singleLine ? singleLine.trim() : null;
   }
 }
 
