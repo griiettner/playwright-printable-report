@@ -123,6 +123,11 @@ class BddReporter implements Reporter {
           .collapsible-content { display: none; padding: 0 15px 1px; }
           h4 { margin: 0 }
           h1 { margin-top: 0 }
+          .feature-header h4 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+          .feature-header .feature-name { font-weight: 600; }
+          .feature-tags { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+          .feature-tag { background-color: #eef4ff; color: #1c3d8f; border-radius: 999px; padding: 2px 10px; font-size: 0.8em; }
+          .feature-status { margin-left: auto; font-weight: 600; }
 
           @media print {
             body {
@@ -193,10 +198,20 @@ class BddReporter implements Reporter {
     return suite.specs.map(spec => {
       const test = spec.tests[0];
       const result = test.results[0];
+      const { title, tags } = this.prepareSpecHeader(spec);
+      const tagsMarkup = tags.length
+        ? `<span class="feature-tags">${tags.map(tag => `<span class="feature-tag">${tag}</span>`).join('')}</span>`
+        : '';
       return `
         <div class="feature">
           <div class="feature-header">
-            <h4>${spec.title} <span class="${spec.ok ? 'passed' : 'failed'}">${spec.ok ? 'PASSED' : 'FAILED'}</span></h4>
+            <h4>
+              <span class="feature-name">${title}</span>
+              ${tagsMarkup}
+              <span class="${spec.ok ? 'passed' : 'failed'} feature-status">
+                ${spec.ok ? 'PASSED' : 'FAILED'}
+              </span>
+            </h4>
           </div>
           <div class="collapsible-content">
             ${result.steps.map(this.renderStep.bind(this)).join('')}
@@ -204,6 +219,25 @@ class BddReporter implements Reporter {
         </div>
       `;
     }).join('');
+  }
+
+  private prepareSpecHeader(spec: ReportSpec): { title: string; tags: string[] } {
+    const rawTitle = (spec.title || '').trim();
+    const tagsFromSpec = (spec.tags || []).map(tag => this.normalizeTag(tag));
+    const titleTagMatches = rawTitle.match(/@[^\s]+/g) || [];
+    const tagsFromTitle = titleTagMatches.map(tag => this.normalizeTag(tag));
+    const cleanTitle = rawTitle.replace(/@[^\s]+/g, '').replace(/\s+/g, ' ').trim();
+
+    const uniqueTags = Array.from(new Set([...tagsFromSpec, ...tagsFromTitle])).filter(Boolean);
+
+    return {
+      title: cleanTitle || rawTitle,
+      tags: uniqueTags,
+    };
+  }
+
+  private normalizeTag(tag: string): string {
+    return tag.replace(/^@/, '').trim();
   }
 
   private renderStep(step: ReportStep): string {
@@ -284,7 +318,7 @@ class BddReporter implements Reporter {
       return `expected ${expected.trim()} but received ${actual.trim()}`;
     }
 
-    const singleLine = cleanMessage.split('\n').find((line) => line.trim().length > 0);
+    const singleLine = cleanMessage.split('\n').find((line: { trim: () => { length: number } }) => line.trim().length > 0);
     return singleLine ? singleLine.trim() : null;
   }
 }
