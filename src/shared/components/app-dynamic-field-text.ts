@@ -1,7 +1,5 @@
-import { expect, type Pages, Then, And } from '../../fixtures'
-import { appInput } from './app-input';
-import { appLabel } from './app-label';
-import { appValidator } from './app-validator';
+import { type Pages, Then } from '../../fixtures'
+import { appInput, appLabel, appValidator } from '../elements';
 
 /**
  * Interface for app dynamic field text component parameters
