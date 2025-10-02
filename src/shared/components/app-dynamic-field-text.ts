@@ -19,11 +19,15 @@ interface AppDynamicFieldText {
   identifier: string;
   /** Whether the field is required (defaults to false) */
   required?: boolean;
+  /** Optional value to enter into the input field */
+  newValue?: string;
+  /** Optional expected current value to validate */
+  expectedValue?: string;
 }
 
 /**
  * Tests and validates a complete dynamic text field component including label, input, and validation
- * This function combines appLabel, appInput, and appValidator to provide comprehensive field testing
+ * This function combines appLabel, appInput, and appValidator to provide comprehensive field testing with value operations
  * @param fx - The page fixtures object containing test utilities and common page methods
  * @param params - Configuration object containing:
  *   - `name`: Identifier for the dynamic field used in test assertions and logging
@@ -33,11 +37,13 @@ interface AppDynamicFieldText {
  *   - `error`: Error text for validation failures (optional, passed to appValidator)
  *   - `identifier`: CSS selector or locator to identify the specific dynamic field instance
  *   - `required`: Whether field should show required indicator (defaults to false, passed to appLabel)
+ *   - `newValue`: Value to enter into the input field (optional, passed to appInput)
+ *   - `expectedValue`: Expected current value to validate (optional, passed to appInput)
  * @remarks
  * The function will test all provided components in sequence:
  * 1. Validates the root dynamic field container is visible
  * 2. Tests label component (if label provided)
- * 3. Tests input component (if placeholder provided)
+ * 3. Tests input component with value operations (if placeholder, expectedValue, or newValue provided)
  * 4. Tests validator component (if helper and error provided)
  * @example
  * ```typescript
@@ -59,13 +65,33 @@ interface AppDynamicFieldText {
  *   identifier: '[data-testid="username-field"]'
  * });
  *
- * // Field with mixed optional components
+ * // Field with value entry
+ * await appDynamicFieldText(fx, {
+ *   name: 'username',
+ *   label: 'Username',
+ *   newValue: 'john_doe',
+ *   identifier: '[data-testid="username-field"]'
+ * });
+ *
+ * // Field with value validation and replacement
+ * await appDynamicFieldText(fx, {
+ *   name: 'email',
+ *   label: 'Email Address',
+ *   expectedValue: 'old@example.com',
+ *   newValue: 'new@example.com',
+ *   identifier: '[data-testid="email-field"]',
+ *   required: true
+ * });
+ *
+ * // Field with mixed optional components and value operations
  * await appDynamicFieldText(fx, {
  *   name: 'phone',
  *   label: 'Phone Number',
  *   placeholder: '(555) 123-4567',
  *   helper: 'Enter numbers only',
  *   error: 'Please enter a valid phone number',
+ *   expectedValue: '1234567890',
+ *   newValue: '5551234567',
  *   identifier: '[data-testid="phone-field"]',
  *   required: false
  * });
@@ -80,7 +106,9 @@ export async function appDynamicFieldText(
     helper,
     error,
     identifier,
-    required = false
+    required = false,
+    newValue,
+    expectedValue
   }: AppDynamicFieldText) {
 
   const root = fx.page.locator('app-dynamic-field-text', { has: fx.page.locator(identifier) });
@@ -90,7 +118,7 @@ export async function appDynamicFieldText(
 
   await appLabel(fx, { label, name, parent: root, required });
 
-  await appInput(fx, { name, parent: root, placeholder });
+  await appInput(fx, { name, parent: root, placeholder, newValue, expectedValue });
 
   await appValidator(fx, { name, helper, error, parent: root });
 }
