@@ -7,8 +7,19 @@ export class CommonPage {
     public request: APIRequestContext
   ) {}
 
+  private isLikelySelector(s: string): boolean {
+    // heuristics: starts with known selector prefixes or contains CSS/XPath tokens
+    return /^(#|\.|\/\/|xpath=|css=|text=|role=|id=|data-testid=|\[)/.test(s);
+  }
+
   getLocator(locator: string | Locator) {
-    return typeof locator === 'string' ? this.page.locator(locator) : locator;
+    if (typeof locator !== 'string') return locator;
+    if (this.isLikelySelector(locator)) {
+      // allow "text=..." and others to pass-through
+      return this.page.locator(locator);
+    }
+    // treat as visible text (exact match). loosen { exact:false } if needed
+    return this.page.getByText(locator, { exact: true });
   }
 
   async elementVisible(locator: string | Locator, message: string = '', notVisible: boolean = false) {
